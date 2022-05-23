@@ -1,3 +1,9 @@
+const AppError = require('../utils/appError');
+
+const handleCastErrorDB = (err) => {
+  const message = `Invalid ${err.path}: ${err.name}`;
+  return new AppError(message, 400);
+};
 const sendErrorDev = (err, res) => {
   res.status(err.statusCode).json({
     status: err.status,
@@ -6,7 +12,7 @@ const sendErrorDev = (err, res) => {
     stack: err.stack,
   });
 };
-const sendErrorPro = (err, res) => {
+const sendErrorProd = (err, res) => {
   // operational trusted error:send message to client
   if (err.isOperational) {
     res.status(err.statusCode).json({
@@ -30,6 +36,11 @@ module.exports = (err, req, res, next) => {
   if (process.env.NODE_ENV === 'development') {
     sendErrorDev(err, res);
   } else if (process.env.NODE_ENV === 'production') {
-    sendErrorPro(err, res);
+    // eslint-disable-next-line node/no-unsupported-features/es-syntax
+    let error = err;
+    // eslint-disable-next-line no-return-assign
+    if (error.name === 'CastError') error = handleCastErrorDB(error);
+
+    sendErrorProd(error, res);
   }
 };
